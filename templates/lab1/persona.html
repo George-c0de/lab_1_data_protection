@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Пользователь</title>
+</head>
+<body>
+<form action="{% url 'change_password_user' %}" method="POST">
+    {% csrf_token %}
+    <label>Новый пароль
+        <input type="password" name="password">
+    </label><br><p></p>
+    {% if new %}
+        <label>Подтвердите пароль
+        <input type="password" name="password2"><br><br>
+        <button type="submit">Установить пароль</button>
+    </label>
+        {% else %}
+        <label>Старый пароль
+        <input type="password" name="password2"><br><br>
+        <button type="submit">Сменить пароль</button>
+    </label>
+    {% endif %}
+
+</form>
+<a href="{% url 'about' %}">О программе</a>
+{% for message in messages %}
+				<p id = "messages">{{message}}</p>
+				{% endfor %}
+</body>
+</html>
