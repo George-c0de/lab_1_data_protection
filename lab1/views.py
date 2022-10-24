@@ -4,18 +4,102 @@ import json
 import os
 from django.contrib import messages
 from rest_framework.decorators import api_view
-
 from djangoProject.settings import MEDIA_ROOT
 from rest_framework.response import Response
+from Crypto.Cipher import AES
 
+from Crypto.Util.Padding import pad, unpad
+
+BLOCK_SIZE = 32  # Bytes
 error = 0
+
+
+def go_dont_read():
+    key = b'aaaabbbbccccdddd'
+    with open(MEDIA_ROOT + '/data.json', "rb") as f:
+        templates = f.read()
+    cipher = AES.new(key, AES.MODE_ECB)
+    ciphertext = cipher.encrypt(pad(templates, BLOCK_SIZE))
+    # with open(MEDIA_ROOT + '/data2.json', "w") as f:
+    #     f.write(ciphertext.hex())
+    print(ciphertext.hex())
+    decipher = AES.new(key, AES.MODE_ECB)
+    msg_dec = decipher.decrypt(ciphertext)
+    with open(MEDIA_ROOT + '/data2.json', "w") as f:
+        f.write(msg_dec.decode('utf-8'))
+    print(unpad(msg_dec, BLOCK_SIZE))
+
+
+go_dont_read()
+
+
+def change_forms(request):
+    return render(request, 'lab1/forms.html')
+
+
+def login_user_admin(request):
+    global error
+    if error >= 3:
+        messages.error(request, 'Превышено кол-во попыток')
+        return render(request, 'lab1/home.html')
+    user = request.COOKIES.get('user')
+    auth = request.COOKIES.get('auth')
+    if auth is not None:
+        auth = int(auth)
+    if request.method == 'POST':
+        if user:
+            if auth == 0 or auth is None:
+                response = render(request, 'lab1/forms.html')
+                return response
+            if user == 'admin':
+                return redirect('admin_home')
+            else:
+                return redirect('lk_persona')
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        with open(MEDIA_ROOT + '/data.json') as f:
+            templates = json.load(f)
+        for user in templates:
+            if user['username'] == username:
+                if user['locked']:
+                    messages.error(request, 'Пользователь заблокирован')
+                    return render(request, 'lab1/home.html')
+                if user['password'] == '':
+                    response = render(request, 'lab1/forms.html')
+                    response.set_cookie(key='user', value=username)
+                    response.set_cookie(key='auth', value=0)
+                    return response
+                if user['password'] == password:
+                    if user['username'] == 'admin':
+                        response = redirect('admin_home')
+                        response.set_cookie(key='user', value=username)
+                        response.set_cookie(key='auth', value=1)
+                        return response
+                    response = redirect('lk_persona')
+                    response.set_cookie(key='user', value=username)
+                    response.set_cookie(key='auth', value=1)
+                    return response
+                else:
+                    error += 1
+                    messages.error(request, 'Пароль неверный')
+                    return render(request, 'lab1/home.html')
+        messages.error(request, 'Пользователя с таким username не существует')
+    else:
+        if user:
+            if auth == 0 or auth is None:
+                return render(request, 'lab1/forms.html')
+            if user == 'admin' and auth == 1:
+                return redirect('admin_home')
+            if auth == 1:
+                return redirect('lk_persona')
+    return render(request, 'lab1/home.html')
 
 
 def lk_persona(request):
     context = {
         'new': False
     }
-    if request.COOKIES.get('user'):
+    if request.COOKIES.get('user') and request.COOKIES.get('user') == 1:
         username = request.COOKIES['user']
         with open(MEDIA_ROOT + '/data.json') as f:
             templates = json.load(f)
@@ -28,69 +112,6 @@ def lk_persona(request):
                 'new': True
             }
     return render(request, 'lab1/persona.html', context=context)
-
-
-def persona(request):
-    global error
-    if error >= 3:
-        messages.error(request, 'Превышено кол-во попыток')
-        return render(request, 'lab1/home.html')
-    if request.method == 'POST':
-        if request.COOKIES.get('user'):
-            return redirect('lk_persona')
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        with open(MEDIA_ROOT + '/data.json') as f:
-            templates = json.load(f)
-        for user in templates:
-            if user['username'] == username:
-                if user['locked']:
-                    messages.error(request, 'Пользователь заблокирован')
-                    return render(request, 'lab1/home.html')
-                if user['password'] == password:
-                    response = redirect('lk_persona')
-                    response.set_cookie(key='user', value=username)
-                    return response
-                else:
-                    error += 1
-                    messages.error(request, 'Пароль неверный')
-                    return render(request, 'lab1/home.html')
-        messages.error(request, 'Пользователя с таким username не существует')
-    else:
-        if request.COOKIES.get('user'):
-            return redirect('lk_persona')
-    return render(request, 'lab1/home.html')
-
-
-def admin_persona(request):
-    global error
-    if error >= 3:
-        messages.error(request, 'Превышено кол-во попыток')
-        return render(request, 'lab1/admin.html')
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        with open(MEDIA_ROOT + '/data.json') as f:
-            templates = json.load(f)
-        for user in templates:
-            if user['username'] == username:
-                if user['password'] == password:
-                    response = redirect('admin_home')
-                    response.set_cookie(key='user', value=username)
-                    return response
-                else:
-
-                    error += 1
-                    messages.error(request, 'Пароль неверный')
-                    return render(request, 'lab1/admin.html')
-        messages.error(request, 'Пользователя с таким username не существует')
-    else:
-        if request.COOKIES.get('user'):
-            if request.COOKIES.get('user') == 'admin':
-                return redirect('admin_home')
-            else:
-                return redirect('lk_persona')
-    return render(request, 'lab1/admin.html')
 
 
 def about(request):
@@ -109,31 +130,57 @@ def change_password_user(request):
         return redirect('persona')
     else:
         username = request.COOKIES.get('user')
+    response = None
     for el in templates:
         if el['username'] == username:
             if el.get('num_limit'):
                 if len(password) >= int(el.get('num_limit')):
                     if el['password'] == '':
-                        el['password'] = password
-                        messages.success(request, 'Пароль изменен')
+                        if password == password2:
+                            el['password'] = password
+                            messages.success(request, 'Пароль изменен')
+                        else:
+                            messages.error(request, 'Пароли не совпадают')
+                            return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))
                     elif password2 == el['password']:
                         el['password'] = password
                         messages.success(request, 'Пароль изменен')
                     else:
                         messages.error(request, 'Неверный пароль')
+                        return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))
                 else:
                     messages.error(request, 'Пароль не соответсвует размеру - {}'.format(int(el.get('num_limit'))))
+                    return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))
             else:
                 if el['password'] == '':
-                    el['password'] = password
-                    messages.success(request, 'Пароль изменен')
+                    if password == password2:
+                        el['password'] = password
+                        messages.success(request, 'Пароль изменен')
+                        if username == 'admin':
+                            response = redirect('admin_home')
+                        else:
+                            response = redirect('lk_persona')
+                        response.set_cookie(key='auth', value=1)
+                    else:
+                        messages.error(request, 'Пароли не совпадают')
+                        return render(request, 'lab1/forms.html')
                 elif password2 == el['password']:
                     el['password'] = password
                     messages.success(request, 'Пароль изменен')
+                    if username == 'admin':
+                        response = redirect('admin_home')
+                    else:
+                        response = redirect('lk_persona')
+                    response.set_cookie(key='auth', value=1)
                 else:
                     messages.error(request, 'Неверный пароль')
+                    return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))
     with open(MEDIA_ROOT + '/data.json', 'w') as f:
         json.dump(templates, f)
+    if response is not None:
+        return response
+    if username == 'admin':
+        return redirect('admin_home')
     return redirect('lk_persona')
 
 
@@ -153,31 +200,6 @@ def check_user(request):
         'block': False,
         'pass': False
     })
-
-
-def change_password(request):
-    password = request.POST.get('password')
-    password2 = request.POST.get('password2')
-    with open(MEDIA_ROOT + '/data.json') as f:
-        templates = json.load(f)
-    with open(MEDIA_ROOT + '/data.json', 'w') as f:
-        for el in templates:
-            if el['username'] == 'admin':
-                if el['password'] == '':
-                    if password == password2:
-                        el['password'] = password
-                        messages.success(request, 'Пароль изменен')
-                    else:
-                        messages.error(request, 'Пароли не совпадают')
-                else:
-                    if password2 == el['password']:
-                        el['password'] = password
-                        messages.success(request, 'Пароль изменен')
-                    else:
-                        messages.error(request, 'Старый пароль неверный')
-        f.seek(0)
-        json.dump(templates, f)
-    return redirect('admin_home')
 
 
 def set_user(request):
@@ -236,25 +258,29 @@ def add_user(request):
 def admin_home(request):
     users = []
     admin = None
-    with open(MEDIA_ROOT + '/data.json') as f:
-        templates = json.load(f)
-    for user in templates:
-        if user.get('num_limit'):
-            num_limit = user['num_limit']
-        else:
-            num_limit = None
-        if user['username'] != 'admin':
-            users.append({
-                "username": user['username'],
-                "password": user['password'],
-                "locked": user['locked'],
-                "limit_password": user['limit_password'],
-                "num_limit": num_limit
-            })
-        else:
-            admin = user
-    context = {
-        'users': users,
-        'admin': admin
-    }
-    return render(request, 'lab1/admin_home.html', context=context)
+    a = request.COOKIES.get('user')
+    b = request.COOKIES.get('auth')
+    if request.COOKIES.get('user') is not None and request.COOKIES.get('auth') == str(1):
+        with open(MEDIA_ROOT + '/data.json') as f:
+            templates = json.load(f)
+        for user in templates:
+            if user.get('num_limit'):
+                num_limit = user['num_limit']
+            else:
+                num_limit = None
+            if user['username'] != 'admin':
+                users.append({
+                    "username": user['username'],
+                    "password": user['password'],
+                    "locked": user['locked'],
+                    "limit_password": user['limit_password'],
+                    "num_limit": num_limit
+                })
+            else:
+                admin = user
+        context = {
+            'users': users,
+            'admin': admin
+        }
+        return render(request, 'lab1/admin_home.html', context=context)
+    return redirect('persona')

@@ -17,22 +17,11 @@
     }
 </style>
 <body>
-<form class="form-group" action="{% url 'change_password' %}" method="POST">
-    {% csrf_token %}
-    <label>Новый пароль
-        <input name="password" type="password">
-    </label><br>
-    {% if admin.password %}
-        <label>Старый пароль
-        <input name="password2" type="password">
-    </label><br>
-    {% else %}
-        <label>Подтвердить пароль
-        <input name="password2" type="password">
-    </label><br>
-    {% endif %}
+
+<a href="{% url 'change_forms' %}">
     <button class="btn btn-dark" type="submit">Изменить пароль</button>
-</form>
+</a>
+
 <table class="table">
     <thead class="thead-dark">
     <tr>
