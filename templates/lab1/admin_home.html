@@ -15,9 +15,14 @@
     form, button, input {
         margin: 10px;
     }
+
+    .a {
+        display: block;
+        text-align: right;
+    }
 </style>
 <body>
-
+<a class="a" href="{% url 'exit_program' %}" style="text-align: right">Выйти из программы</a>
 <a href="{% url 'change_forms' %}">
     <button class="btn btn-dark" type="submit">Изменить пароль</button>
 </a>

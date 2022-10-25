@@ -13,5 +13,7 @@ urlpatterns = [
     path('change_password_user', change_password_user, name='change_password_user'),
     path('check_user', check_user, name='check_user'),
     path('about', about, name='about'),
-    path('change_forms', change_forms, name='change_forms')
+    path('change_forms', change_forms, name='change_forms'),
+    path('change_encrypt', change_encrypt, name="change_encrypt"),
+    path('exit_program', exit_program, name='exit_program')
 ]

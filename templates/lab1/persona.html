@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <title>Пользователь</title>
 </head>
+<style>
+
+    .a {
+        display: block;
+        text-align: right;
+    }
+</style>
 <body>
+<a class="a" href="{% url 'exit_program' %}" style="text-align: right">Выйти из программы</a>
 <a href="{% url 'change_forms' %}">
     <button type="submit">Сменить пароль</button>
 </a>

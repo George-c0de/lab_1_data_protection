@@ -12,29 +12,67 @@ from Crypto.Util.Padding import pad, unpad
 
 BLOCK_SIZE = 32  # Bytes
 error = 0
+key = b'key_admin_encryp'
+encrypt_key = True
 
 
-def go_dont_read():
-    key = b'aaaabbbbccccdddd'
-    with open(MEDIA_ROOT + '/data.json', "rb") as f:
-        templates = f.read()
-    cipher = AES.new(key, AES.MODE_ECB)
-    ciphertext = cipher.encrypt(pad(templates, BLOCK_SIZE))
-    # with open(MEDIA_ROOT + '/data2.json', "w") as f:
-    #     f.write(ciphertext.hex())
-    print(ciphertext.hex())
-    decipher = AES.new(key, AES.MODE_ECB)
-    msg_dec = decipher.decrypt(ciphertext)
-    with open(MEDIA_ROOT + '/data2.json', "w") as f:
-        f.write(msg_dec.decode('utf-8'))
-    print(unpad(msg_dec, BLOCK_SIZE))
+def encrypt(key_user):
+    if key == key_user:
+        with open(MEDIA_ROOT + '/data.json', "rb") as f:
+            templates = f.read()
+        cipher = AES.new(key, AES.MODE_ECB)
+        ciphertext = cipher.encrypt(pad(templates, BLOCK_SIZE))
+        with open(MEDIA_ROOT + '/data2.json', "wb") as f:
+            f.write(ciphertext)
+        return True
+    else:
+        return False
 
 
-go_dont_read()
+# encrypt(b'key_admin_encryp')
+
+
+@api_view(['GET'])
+def exit_program(request):
+    encrypt(b'key_admin_encryp')
+    os.remove('E:\\Лабы по новым технологиям\\djangoProject\\media\\data.json')
+    return render(request, 'lab1/exit.html')
+
+
+def decipher(key_user):
+    if key == key_user:
+        with open(MEDIA_ROOT + '/data2.json', "rb") as f:
+            templates = f.read()
+        decipher = AES.new(key, AES.MODE_ECB)
+        msg_dec = unpad(decipher.decrypt(templates), BLOCK_SIZE)
+        # msg_dec = str(msg_dec).split(']')[0] + ']'
+        # msg_dec = msg_dec.encode('utf-8')
+        # msg_dec = json.loads(msg_dec)
+        with open(MEDIA_ROOT + '/data.json', 'wb') as f:
+            f.write(msg_dec)
+        return True
+    else:
+        return False
 
 
 def change_forms(request):
     return render(request, 'lab1/forms.html')
+
+
+def change_encrypt(request):
+    global encrypt_key, error
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        if password.encode('utf-8') == key:
+            encrypt_key = False
+            messages.success(request, 'ok')
+            decipher(key)
+        else:
+            error = 100
+            messages.error(request, 'Ошибка пароля')
+    else:
+        messages.error(request, 'Ошибка пароля')
+    return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))
 
 
 def login_user_admin(request):
@@ -42,6 +80,8 @@ def login_user_admin(request):
     if error >= 3:
         messages.error(request, 'Превышено кол-во попыток')
         return render(request, 'lab1/home.html')
+    if encrypt_key:
+        return render(request, 'lab1/encrypt.html')
     user = request.COOKIES.get('user')
     auth = request.COOKIES.get('auth')
     if auth is not None:
@@ -139,12 +179,23 @@ def change_password_user(request):
                         if password == password2:
                             el['password'] = password
                             messages.success(request, 'Пароль изменен')
+                            if username == 'admin':
+                                response = redirect('admin_home')
+                            else:
+                                response = redirect('lk_persona')
+                            response.set_cookie(key='auth', value=1)
+                            return response
                         else:
                             messages.error(request, 'Пароли не совпадают')
                             return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))
                     elif password2 == el['password']:
                         el['password'] = password
                         messages.success(request, 'Пароль изменен')
+                        if username == 'admin':
+                            response = redirect('admin_home')
+                        else:
+                            response = redirect('lk_persona')
+                        response.set_cookie(key='auth', value=1)
                     else:
                         messages.error(request, 'Неверный пароль')
                         return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))
